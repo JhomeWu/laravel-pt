@@ -1,0 +1,53 @@
+version: "3"
+
+services:
+  test-mariadb:
+    image: mariadb:10.5
+    networks:
+      - service_network
+    environment:
+      MYSQL_ROOT_PASSWORD: changeThis
+  phpfpm:
+    build: phpfpm
+    image: speed-compare/phpfpm
+    volumes:
+      - ./phpfpm/php.ini:/usr/local/etc/php/php.ini
+    networks:
+      - service_network
+    links:
+      - "test-mariadb"
+  swoole:
+    build: swoole
+    image: speed-compare/swoole
+    volumes:
+      - ./swoole/php.ini:/usr/local/etc/php/php.ini
+    networks:
+      - service_network
+    links:
+      - "test-mariadb"
+  nginx:
+    build: nginx
+    image: speed-compare/nginx
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d
+    ports:
+      - '7000:80'
+    networks:
+      service_network:
+        aliases:
+          - phpfpm.test
+          - swoole.test
+    links:
+      - "phpfpm"
+      - "swoole"
+  test-server:
+    build: test-server
+    image: speed-compare/test-server
+    networks:
+      - service_network
+    tty: true
+    links:
+      - "nginx"
+networks:
+  service_network:
+    driver: bridge
